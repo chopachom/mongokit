@@ -84,7 +84,7 @@ class DocumentProperties(SchemaProperties):
                         raise BadIndexError(
                           "'fields' key must be specify in indexes")
                     for key, value in index.iteritems():
-                        if key not in ['fields', 'unique', 'ttl', 'check']:
+                        if key not in ['fields', 'unique', 'ttl', 'check', 'sparse']:
                             raise BadIndexError(
                               "%s is unknown key for indexes" % key)
                         if key == "fields":
@@ -128,6 +128,10 @@ class DocumentProperties(SchemaProperties):
                                   "fields must be a string, a tuple or a list of tuple (got %s instead)" % type(value))
                         elif key == "ttl":
                             assert isinstance(value, int)
+                        elif key == "sparse":
+                            assert value in [False, True], value
+                            if not isinstance(index['fields'], basestring):
+                                assert len(index['fields']) == 1, BadIndexError("Sparse index may only contain one field")
                         else:
                             assert value in [False, True], value
 
@@ -433,6 +437,9 @@ class Document(SchemaDocument):
             ttl = 300
             if 'ttl' in index.keys():
                 ttl = index['ttl']
+            sparse = False
+            if 'sparse' in index.keys():
+                sparse = index['sparse']
             if isinstance(index['fields'], tuple):
                 fields = [index['fields']]
             elif isinstance(index['fields'], basestring):
@@ -444,7 +451,7 @@ class Document(SchemaDocument):
                         field = (field, 1)
                     fields.append(field)
             log.debug('Creating index for %s' % str(index['fields']))
-            collection.ensure_index(fields, unique=unique, ttl=ttl)
+            collection.ensure_index(fields, unique=unique, ttl=ttl, sparse=sparse)
 
     def to_json_type(self):
         """
